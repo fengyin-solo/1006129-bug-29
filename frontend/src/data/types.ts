@@ -2,10 +2,11 @@
 
 export type EntryRow = {
   id: number
-  status: string
-  pending: boolean
-  abnormal: boolean
-  [field: string]: string | number | boolean
+  // 主业务行才有状态三件套；报警、留痕、监测记录等子集合行没有，故设为可选。
+  status?: string
+  pending?: boolean
+  abnormal?: boolean
+  [field: string]: string | number | boolean | undefined
 }
 
 export type ModuleMeta = {
@@ -30,6 +31,12 @@ export type PageResult = {
 export type ActionResult = {
   ok: boolean
   message: string
+}
+
+/** 当前操作者：operator 用于留痕，unit 用于归属与越权判定。 */
+export type ActorContext = {
+  operator: string
+  unit: string
 }
 
 export type OverviewResult = {

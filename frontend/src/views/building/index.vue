@@ -46,6 +46,7 @@
           <td v-for="column in columns" :key="column">{{ row[column] ?? '—' }}</td>
           <td>{{ row.status }}</td>
           <td class="row-actions">
+            <span v-if="isReleased(row)" class="tag readonly">已解除·只读</span>
             <button
               v-for="action in actions"
               :key="action"
@@ -63,8 +64,31 @@
       </tbody>
     </table>
 
+    <section class="section-block">
+      <h3>报警清单（有效报警测点 {{ activeAlarms.length }} 个）</h3>
+      <p class="section-note">
+        报警结论来自地表沉降测点，两侧只存一份、同步重算；超限幅度以地表沉降测点实测（累计沉降 − 判定阈值）为准。
+      </p>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th v-for="column in alarmColumns" :key="column">{{ column }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="alarm in activeAlarms" :key="String(alarm.id)">
+            <td v-for="column in alarmColumns" :key="column">{{ alarm[column] === '' ? '—' : (alarm[column] ?? '—') }}</td>
+          </tr>
+          <tr v-if="!activeAlarms.length">
+            <td :colspan="alarmColumns.length" class="empty-state">暂无有效报警测点</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
     <footer class="page-foot">
       <span>共 {{ total }} 条建筑监测记录</span>
+      <span v-if="okMessage" class="success-text">{{ okMessage }}</span>
       <span v-if="errorMessage" class="error-text">{{ errorMessage }}</span>
     </footer>
   </section>
@@ -75,6 +99,7 @@ import { computed, onMounted, ref } from 'vue'
 
 import {
   downloadEntries,
+  listActiveAlarms,
   listEntries,
   moduleMeta,
   runAction as applyAction,
@@ -85,10 +110,12 @@ const meta = moduleMeta('building')
 const columns = ["对象编号", "建筑物名称", "结构类型", "距隧道距离", "允许沉降", "实测沉降", "监测频次", "监测状态"]
 const actions = ["布设测点", "发布报警", "解除报警"]
 const statuses = ["待布点", "监测中", "已报警", "已解除"]
-const stats = [{"label": "监测中对象", "value": 0}, {"label": "报警对象", "value": 0}, {"label": "待布点对象", "value": 0}]
+const alarmColumns = ["测点编号", "归属单位", "累计沉降", "判定阈值", "超限幅度", "结论", "首次发布时间"]
 
 const rows = ref<EntryRow[]>([])
+const activeAlarms = ref<EntryRow[]>([])
 const total = ref(0)
+const okMessage = ref('')
 const errorMessage = ref('')
 const filters = ref<Record<string, string>>({})
 const filterFields = columns.slice(0, 3)
@@ -98,6 +125,15 @@ const statusSummary = computed(() =>
     count: rows.value.filter((row) => String(row.status) === status).length,
   })),
 )
+const stats = computed(() => [
+  { label: '监测中对象', value: rows.value.filter((row) => String(row.status) === '监测中').length },
+  { label: '报警测点', value: activeAlarms.value.length },
+  { label: '待布点对象', value: rows.value.filter((row) => String(row.status) === '待布点').length },
+])
+
+function isReleased(row: EntryRow): boolean {
+  return String(row.status) === '已解除'
+}
 
 function resetFilters() {
   filters.value = {}
@@ -113,9 +149,12 @@ function openCreate() {
 }
 
 function runAction(action: string, row: EntryRow) {
+  okMessage.value = ''
   errorMessage.value = ''
   const result = applyAction(meta.key, Number(row.id), action)
-  if (!result.ok) {
+  if (result.ok) {
+    okMessage.value = result.message
+  } else {
     errorMessage.value = result.message
     return
   }
@@ -123,11 +162,11 @@ function runAction(action: string, row: EntryRow) {
 }
 
 function reload() {
-  errorMessage.value = ''
   try {
     const payload = listEntries(meta.key, filters.value)
     rows.value = payload.items
     total.value = payload.total
+    activeAlarms.value = listActiveAlarms()
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '建筑监测列表读取失败'
   }

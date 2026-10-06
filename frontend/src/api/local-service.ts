@@ -1,9 +1,38 @@
 import { MODULE_BY_KEY } from '@/data/modules'
 import { allRows, listRows, resetRows, saveRows } from '@/data/local-store'
-import type { ActionResult, EntryRow, ModuleMeta, OverviewResult, PageResult } from '@/data/types'
+import { DEFAULT_UNIT } from '@/data/units'
+import type { ActionResult, ActorContext, EntryRow, ModuleMeta, OverviewResult, PageResult } from '@/data/types'
+import {
+  RELEASED_STATUS,
+  SETTLEMENT_KEY,
+  adjustThreshold as adjustThresholdWith,
+  confirmStable as confirmStableWith,
+  countActiveAlarms,
+  listActiveAlarms,
+  listMonitoringRecords,
+  listSettlementAlarms,
+  listSettlementPoints,
+  listThresholdLog,
+  publishAlarm as publishAlarmWith,
+  runSettlementAction,
+  submitMonitoring as submitMonitoringWith,
+  transferPoint as transferPointWith,
+} from '@/api/settlement-service'
+import type { MonitoringInput } from '@/api/settlement-service'
 
 // 会写进数据的「往回走」动作：命中就把这条记录标成异常态，看板上能一眼看出来。
 const NEGATIVE_ACTIONS = ['撤销', '作废', '拒绝', '驳回', '停用', '忽略', '下线', '回滚']
+
+// 当前操作者：页面切换单位时由 App.vue 同步进来，所有写操作都按这个身份校验。
+let actor: ActorContext = { operator: '值班管理员', unit: DEFAULT_UNIT }
+
+export function setActor(next: ActorContext): void {
+  actor = { ...next }
+}
+
+export function currentActor(): ActorContext {
+  return { ...actor }
+}
 
 export function moduleMeta(key: string): ModuleMeta {
   const meta = MODULE_BY_KEY.get(key)
@@ -24,12 +53,16 @@ export function filterRows(rows: EntryRow[], filters: Record<string, string>): E
 }
 
 export function listEntries(key: string, filters: Record<string, string> = {}): PageResult {
-  const matched = filterRows(listRows(key), filters)
+  const matched = filterRows(key === SETTLEMENT_KEY ? listSettlementPoints() : listRows(key), filters)
   return { items: matched, total: matched.length, page: 1, size: matched.length }
 }
 
 export function runAction(key: string, id: number, action: string): ActionResult {
   const meta = moduleMeta(key)
+  // 地表沉降统一走沉降域入口：越权、跨单位、只读校验与页面直连的领域函数是同一份。
+  if (key === SETTLEMENT_KEY) {
+    return runSettlementAction(id, action, currentActor())
+  }
   const target = meta.actionTargets[action]
   if (!target) {
     return { ok: false, message: `${meta.entity}没有登记「${action}」这个动作` }
@@ -40,6 +73,10 @@ export function runAction(key: string, id: number, action: string): ActionResult
     return { ok: false, message: `没有找到编号为 ${id} 的${meta.entity}` }
   }
   const current = String(rows[index].status)
+  // 已解除的记录整段转只读：任何动作当场拒绝，只能查看。
+  if (current === RELEASED_STATUS || current === '已解除') {
+    return { ok: false, message: `${meta.entity}已解除（${current}），整段只读，不能改动` }
+  }
   if (current === target) {
     return { ok: false, message: `${meta.entity}已经是「${target}」，不用重复操作` }
   }
@@ -56,6 +93,38 @@ export function runAction(key: string, id: number, action: string): ActionResult
   return { ok: true, message: `${meta.entity}已${action}，当前状态「${target}」` }
 }
 
+// ---------------------------------------------------------------------------
+// 地表沉降领域入口：页面只调这里，操作者身份统一由 currentActor 注入。
+// ---------------------------------------------------------------------------
+export function submitMonitoring(pointId: number, input: MonitoringInput): ActionResult {
+  return submitMonitoringWith(pointId, input, currentActor())
+}
+
+export function publishAlarm(pointId: number): ActionResult {
+  return publishAlarmWith(pointId, currentActor())
+}
+
+export function confirmStable(pointId: number): ActionResult {
+  return confirmStableWith(pointId, currentActor())
+}
+
+export function adjustThreshold(pointId: number, newThreshold: number): ActionResult {
+  return adjustThresholdWith(pointId, newThreshold, currentActor())
+}
+
+export function transferPoint(pointId: number, toUnit: string): ActionResult {
+  return transferPointWith(pointId, toUnit, currentActor())
+}
+
+export {
+  countActiveAlarms,
+  listActiveAlarms,
+  listMonitoringRecords,
+  listSettlementAlarms,
+  listSettlementPoints,
+  listThresholdLog,
+}
+
 export function resetModule(key: string): PageResult {
   resetRows(key)
   return listEntries(key)
@@ -65,7 +134,8 @@ export function exportEntries(key: string): { filename: string; content: string 
   const meta = moduleMeta(key)
   const header = ['编号', ...meta.fields, '当前状态']
   const lines = [header.join(',')]
-  for (const row of listRows(key)) {
+  const rows = key === SETTLEMENT_KEY ? listSettlementPoints() : listRows(key)
+  for (const row of rows) {
     lines.push([row.id, ...meta.fields.map((field) => row[field] ?? ''), row.status].join(','))
   }
   return { filename: `${meta.name}-清单.csv`, content: `\uFEFF${lines.join('\n')}` }

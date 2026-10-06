@@ -41,11 +41,7 @@ export function listRows(key: string): EntryRow[] {
 }
 
 export function saveRows(key: string, rows: EntryRow[]): void {
-  const next = { ...allRows(), [key]: rows }
-  cache = next
-  if (typeof window !== 'undefined' && window.localStorage) {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
-  }
+  persistAll({ ...allRows(), [key]: rows })
 }
 
 export function resetRows(key: string): EntryRow[] {
@@ -56,4 +52,22 @@ export function resetRows(key: string): EntryRow[] {
 
 export function storageKey(): string {
   return STORAGE_KEY
+}
+
+/** 整库一次性写入：先落 localStorage 再换缓存，写库失败时缓存不被污染。 */
+export function persistAll(rows: Record<string, EntryRow[]>): void {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(rows))
+  }
+  cache = clone(rows)
+}
+
+/** 绕过缓存直接从 localStorage 重读：写完核对自己、不拿老数据兜底都靠它。 */
+export function readFresh(): Record<string, EntryRow[]> {
+  return readStorage()
+}
+
+/** 作废内存缓存，下一次读取一定回到存储介质。 */
+export function invalidateCache(): void {
+  cache = null
 }
