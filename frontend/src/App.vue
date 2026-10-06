@@ -11,7 +11,17 @@
     <main class="app-main">
       <header class="app-head">
         <span class="head-desc">面向盾构机台账、掘进环次、管片拼装、同步注浆、渣土外运、地表沉降监测与轴线纠偏的一体化盾构隧道施工管理平台。</span>
-        <span class="head-user">当前值班：{{ store.operator }} · {{ store.shiftLabel }}</span>
+        <span class="head-user">
+          当前值班：{{ store.operator }} · {{ store.shiftLabel }}
+          <label class="unit-switch">
+            监测单位账号：
+            <select :value="store.unitId" @change="onSwitchUnit(($event.target as HTMLSelectElement).value)">
+              <option v-for="unit in units" :key="unit.id" :value="unit.id">
+                {{ unit.name }}（{{ unit.operator }}）
+              </option>
+            </select>
+          </label>
+        </span>
       </header>
       <RouterView />
     </main>
@@ -20,8 +30,14 @@
 
 <script setup lang="ts">
 import { useSessionStore } from '@/stores/session'
+import { MONITOR_UNITS } from '@/data/monitor/seed'
 
 const store = useSessionStore()
+const units = MONITOR_UNITS
+
+function onSwitchUnit(unitId: string) {
+  store.switchUnit(unitId)
+}
 
 const navItems = [{ label: "运营概览", path: "/" }, { label: "盾构机台账", path: "/shield" }, { label: "掘进环次", path: "/ring" }, { label: "管片拼装", path: "/segment" }, { label: "同步注浆", path: "/grouting" }, { label: "渣土外运", path: "/muck" }, { label: "地表沉降", path: "/settlement" }, { label: "轴线偏差", path: "/axis" }, { label: "刀具磨损", path: "/cutter" }, { label: "管片生产", path: "/segmentprod" }, { label: "浆液拌制", path: "/mortar" }, { label: "洞内通风", path: "/ventilation" }, { label: "建筑监测", path: "/building" }, { label: "管线探查", path: "/utility" }, { label: "进度节点", path: "/progress" }, { label: "试验检测", path: "/testing" }, { label: "应急演练", path: "/drill" }, { label: "班组进场", path: "/crew" }, { label: "安全巡检", path: "/safety" }]
 </script>

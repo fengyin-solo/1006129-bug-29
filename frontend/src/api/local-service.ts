@@ -1,5 +1,6 @@
 import { MODULE_BY_KEY } from '@/data/modules'
 import { allRows, listRows, resetRows, saveRows } from '@/data/local-store'
+import { activeAlarmPointCount, listBuildings, listPoints } from '@/data/monitor/service'
 import type { ActionResult, EntryRow, ModuleMeta, OverviewResult, PageResult } from '@/data/types'
 
 // 会写进数据的「往回走」动作：命中就把这条记录标成异常态，看板上能一眼看出来。
@@ -88,6 +89,11 @@ export function loadOverview(): OverviewResult {
   const rows = allRows()
   const modules = [...MODULE_BY_KEY.values()].map((meta) => {
     const entries = rows[meta.key] ?? []
+    // 地表沉降、建筑监测已迁到监测领域（单一数据源）：概览数字跟着领域重算，
+    // 不再各读各的泛型表，避免两侧对不上、重复计数。
+    if (meta.key === 'settlement' || meta.key === 'building') {
+      return monitorOverviewStat(meta.key, entries.length)
+    }
     return {
       name: meta.name,
       created: entries.length,
@@ -102,4 +108,24 @@ export function loadOverview(): OverviewResult {
     { label: '异常量', value: modules.reduce((sum, item) => sum + item.abnormal, 0) },
   ]
   return { cards, modules }
+}
+
+/** 监测领域两页共用一份报警数据，概览里的统计也必须同源。 */
+function monitorOverviewStat(key: string, fallbackCreated: number): OverviewResult['modules'][number] {
+  if (key === 'settlement') {
+    const points = listPoints()
+    return {
+      name: MODULE_BY_KEY.get('settlement')!.name,
+      created: points.length,
+      pending: points.filter((point) => point.status === '正常' || point.status === '预警').length,
+      abnormal: activeAlarmPointCount(),
+    }
+  }
+  const buildings = listBuildings()
+  return {
+    name: MODULE_BY_KEY.get('building')!.name,
+    created: buildings.length || fallbackCreated,
+    pending: buildings.filter((item) => item.status === '正常' || item.status === '预警').length,
+    abnormal: activeAlarmPointCount(),
+  }
 }

@@ -35,3 +35,40 @@ body { margin: 0; background: #f6f8fb; color: #1f2937; }
 .error-text { color: #b42318; }
 .status-legend { display: flex; flex-wrap: wrap; gap: 12px; margin: 0 0 10px; font-size: 12px; color: var(--muted); }
 .legend-item { background: #eef2f7; border-radius: 999px; padding: 2px 10px; }
+
+/* 监测领域：归属、报警、弹窗、留痕 */
+.head-user { display: flex; align-items: center; gap: 12px; }
+.unit-switch select { margin-left: 4px; padding: 2px 4px; }
+.badge { display: inline-block; border-radius: 999px; padding: 2px 10px; font-size: 12px; white-space: nowrap; }
+.badge-ok { background: #e7f6ec; color: #1a7f37; }
+.badge-warn { background: #fdf0da; color: #b25e09; }
+.badge-danger { background: #fde8e8; color: #b42318; font-weight: 600; }
+.badge-muted { background: #eef2f7; color: #64748b; }
+.tag { display: inline-block; border-radius: 4px; padding: 0 5px; font-size: 11px; margin-left: 4px; vertical-align: middle; }
+.tag-legacy { background: #e6f0ff; color: #1f6feb; }
+.tag-lock { background: #f1f5f9; color: #64748b; }
+.cell-sub { color: var(--muted); font-size: 12px; }
+.num-danger { color: #b42318; font-weight: 600; }
+.row-alarm { background: #fff7f7; }
+.row-released { background: #f8fafc; color: #94a3b8; }
+.readonly-text { color: #94a3b8; font-size: 12px; white-space: nowrap; }
+.link.danger { color: #b42318; }
+.link:disabled { color: #cbd5e1; cursor: not-allowed; }
+.stat-danger .stat-value { color: #b42318; }
+.notice { border-radius: 6px; padding: 8px 12px; margin-bottom: 10px; font-size: 13px; }
+.notice-ok { background: #e7f6ec; color: #1a7f37; border: 1px solid #b7e4c7; }
+.notice-error { background: #fde8e8; color: #b42318; border: 1px solid #f5c2c0; }
+.modal-mask { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.45); display: flex; align-items: center; justify-content: center; z-index: 50; }
+.modal { background: #fff; border-radius: 10px; width: 520px; max-width: calc(100vw - 40px); max-height: calc(100vh - 80px); overflow: auto; box-shadow: 0 18px 48px rgba(15, 23, 42, 0.25); }
+.modal-head { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--border); }
+.modal-body { padding: 14px 16px; }
+.modal-foot { padding: 10px 16px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 8px; }
+.modal-hint { margin: 0 0 10px; font-size: 12px; color: var(--muted); }
+.form-grid { display: flex; flex-direction: column; gap: 10px; }
+.form-grid label span { display: block; font-size: 12px; color: var(--muted); margin-bottom: 3px; }
+.form-grid input, .form-grid select, .form-grid textarea { width: 100%; padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; font: inherit; }
+.ledger, .audit { margin-top: 20px; }
+.ledger-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+.ledger-head h3, .audit h3 { margin: 0; font-size: 15px; }
+.ledger-count { font-size: 12px; color: var(--muted); }
+.ledger-note { font-size: 12px; color: var(--muted); margin: 6px 0 0; }
